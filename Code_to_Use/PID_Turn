@@ -1,0 +1,40 @@
+def turn_to_angle_pid(target_angle, speed=30, kp=1.5, ki=0.0, kd=0.5, tolerance=1.0):
+    """
+    Rotate robot to a specific angle using gyro-based PID control.
+
+    Parameters:
+        target_angle (float): Target angle in degrees (positive = right turn, negative = left turn)
+        speed (int): Maximum motor speed (absolute)
+        kp, ki, kd (float): PID constants
+        tolerance (float): Acceptable error margin in degrees
+    """
+
+    # Reset yaw angle
+    hub.motion_sensor.reset_yaw_angle()
+
+    integral = 0
+    last_error = target_angle
+
+    while True:
+        current_angle = hub.motion_sensor.get_yaw_angle()
+        error = target_angle - current_angle
+
+        # Wrap error to [-180, 180] to avoid long turns
+        error = (error + 180) % 360 - 180
+
+        if abs(error) <= tolerance:
+            break
+
+        integral += error
+        derivative = error - last_error
+        correction = kp * error + ki * integral + kd * derivative
+        last_error = error
+
+        # Clamp correction to motor speed limits
+        correction = max(-abs(speed), min(abs(speed), correction))
+
+        # In-place tank turn: left motor opposite of right
+        motors.start_tank(correction, -correction)
+        wait_for_seconds(0.01)
+
+    motors.stop()
