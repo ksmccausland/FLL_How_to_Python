@@ -1,0 +1,20 @@
+import time
+
+from hub import light_matrix
+
+# function that will display a face that blinks
+def blink():
+    light_matrix.show_image(light_matrix.IMAGE_HAPPY)
+
+    time.sleep_ms(1000)
+
+    light_matrix.show_image(light_matrix.IMAGE_SMILE)
+
+    time.sleep_ms(200)
+
+    light_matrix.show_image(light_matrix.IMAGE_HAPPY)
+
+# blink 3 times
+blink()
+blink()
+blink()
