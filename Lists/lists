@@ -1,0 +1,24 @@
+import random
+import time
+import color
+from hub import light
+
+# Create a list with some different light colors.
+colors = [color.RED, color.GREEN, color.BLUE, color.YELLOW]
+
+# Change the light five to ten times.
+times = random.randint(5, 10)
+
+for i in range(times):
+    # Choose a random color from the list of colors.
+    random_color = random.choice(colors)
+
+    # Set the light to the random color.
+    light.color(light.POWER, random_color)
+
+    # Keep the light on for 0.5 to 1.5 seconds.
+    sleep_time = random.randint(500, 1500)
+    time.sleep_ms(sleep_time)
+
+# Set the light to white.
+light.color(light.POWER, color.WHITE)
