@@ -1,0 +1,14 @@
+import motor
+import runloop
+from hub import port
+
+async def main():
+    # Create a variable `velocity` with a value of 720.
+    velocity = 720
+
+    # Run two motors on ports A and B for 360 degrees.
+    # Use the value of the `velocity` variable for the motor velocity.
+    await motor.run_for_degrees(port.A, 360, velocity)
+    await motor.run_for_degrees(port.B, 360, velocity)
+
+runloop.run(main())
