@@ -1,1 +1,11 @@
+import motor
+import runloop
+from hub import port
 
+async def main():
+    # Run two motors on ports A and B for 360 degrees at 720 degrees per second.
+    # The motors run after each other.
+    await motor.run_for_degrees(port.A, 360, 720)
+    await motor.run_for_degrees(port.B, 360, 720)
+
+runloop.run(main())
