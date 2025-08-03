@@ -1,56 +1,50 @@
 from spike import PrimeHub, MotorPair
-import time
+from spike.control import wait_for_seconds
+import math
 
-# Initialize hub and motors
 hub = PrimeHub()
-motors = MotorPair('A', 'E')  # Adjust if your motors are on different ports
+motors = MotorPair('A', 'E')  # Update to match your robot's motor ports
 
-# Reset yaw angle and motor degrees
-hub.motion_sensor.reset_yaw_angle()
-motors.set_degrees_counted(0)
+def drive_straight_pid(distance_cm, speed=30, kp=1.2, ki=0.0, kd=0.2):
+    """
+    Drive straight for a given distance using PID to correct heading.
 
-# PID parameters (tune as needed)
-Kp = 1.2
-Ki = 0.0
-Kd = 0.2
+    Parameters:
+        distance_cm (float): Distance to travel (negative for backward)
+        speed (int): Base motor speed (positive only, function handles direction)
+        kp, ki, kd (float): PID constants
+    """
 
-# PID state variables
-integral = 0
-last_error = 0
+    # Set up PID variables
+    integral = 0
+    last_error = 0
+    target_heading = hub.motion_sensor.get_yaw_angle()
 
-# Target distance in centimeters
-target_distance_cm = 50
+    # Reset motor rotation and yaw
+    motors.set_degrees_counted(0)
+    initial_direction = 1 if distance_cm >= 0 else -1
+    speed = abs(speed) * initial_direction
+    hub.motion_sensor.reset_yaw_angle()
 
-# Robot constants (adjust for your robot!)
-WHEEL_DIAMETER_CM = 5.6  # Standard LEGO wheel diameter
-DEGREES_PER_ROTATION = 360
+    motors.start(0, 0)  # Start motors at 0 speed for smooth control
 
-# Calculate degrees to rotate for given distance
-wheel_circumference = 3.1416 * WHEEL_DIAMETER_CM
-rotations_needed = target_distance_cm / wheel_circumference
-target_degrees = rotations_needed * DEGREES_PER_ROTATION
+    while abs(motors.get_degrees_counted('average')) < abs(distance_cm * 360 / 17.6):  # Assume 17.6 cm/rev for wheels
+        current_heading = hub.motion_sensor.get_yaw_angle()
+        error = current_heading - target_heading
 
-# Reset motor encoder
-motors.set_degrees_counted(0)
+        # Wrap angle to [-180, 180]
+        error = (error + 180) % 360 - 180
 
-# Drive loop
-target_speed = 50
+        integral += error
+        derivative = error - last_error
+        correction = kp * error + ki * integral + kd * derivative
+        last_error = error
 
-while motors.get_degrees_counted() < target_degrees:
-    # PID correction from yaw angle
-    error = hub.motion_sensor.get_yaw_angle()
-    integral += error
-    derivative = error - last_error
+        left_speed = speed - correction
+        right_speed = speed + correction
 
-    correction = Kp * error + Ki * integral + Kd * derivative
+        motors.start_tank(left_speed, right_speed)
+        wait_for_seconds(0.01)
 
-    left_speed = target_speed - correction
-    right_speed = target_speed + correction
+    motors.stop()
 
-    motors.start_tank(left_speed, right_speed)
-
-    last_error = error
-    time.sleep(0.01)
-
-# Stop the motors
-motors.stop()
