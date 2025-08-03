@@ -1,0 +1,56 @@
+from spike import PrimeHub, MotorPair
+import time
+
+# Initialize hub and motors
+hub = PrimeHub()
+motors = MotorPair('A', 'E')  # Adjust if your motors are on different ports
+
+# Reset yaw angle and motor degrees
+hub.motion_sensor.reset_yaw_angle()
+motors.set_degrees_counted(0)
+
+# PID parameters (tune as needed)
+Kp = 1.2
+Ki = 0.0
+Kd = 0.2
+
+# PID state variables
+integral = 0
+last_error = 0
+
+# Target distance in centimeters
+target_distance_cm = 50
+
+# Robot constants (adjust for your robot!)
+WHEEL_DIAMETER_CM = 5.6  # Standard LEGO wheel diameter
+DEGREES_PER_ROTATION = 360
+
+# Calculate degrees to rotate for given distance
+wheel_circumference = 3.1416 * WHEEL_DIAMETER_CM
+rotations_needed = target_distance_cm / wheel_circumference
+target_degrees = rotations_needed * DEGREES_PER_ROTATION
+
+# Reset motor encoder
+motors.set_degrees_counted(0)
+
+# Drive loop
+target_speed = 50
+
+while motors.get_degrees_counted() < target_degrees:
+    # PID correction from yaw angle
+    error = hub.motion_sensor.get_yaw_angle()
+    integral += error
+    derivative = error - last_error
+
+    correction = Kp * error + Ki * integral + Kd * derivative
+
+    left_speed = target_speed - correction
+    right_speed = target_speed + correction
+
+    motors.start_tank(left_speed, right_speed)
+
+    last_error = error
+    time.sleep(0.01)
+
+# Stop the motors
+motors.stop()
