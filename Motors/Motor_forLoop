@@ -1,0 +1,18 @@
+import motor
+import runloop
+from hub import port
+
+velocity = 450
+
+async def main():
+    # use 'global' keyword to allow changing of velocity variable within main() function
+    global velocity
+    degrees = 360
+
+    for i in range(4):
+        velocity = velocity + i*90
+        await motor.run_for_degrees(port.D, degrees, velocity)
+
+    await motor.run_for_degrees(port.E, degrees, velocity)
+
+runloop.run(main())
