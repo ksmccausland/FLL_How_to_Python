@@ -1,0 +1,18 @@
+import time
+
+from hub import light_matrix
+
+# display a happy face
+light_matrix.show_image(light_matrix.IMAGE_HAPPY)
+
+# wait
+time.sleep_ms(1000)
+
+# display a smile without eyes
+light_matrix.show_image(light_matrix.IMAGE_SMILE)
+
+# wait
+time.sleep_ms(200)
+
+# show the first image happy face
+light_matrix.show_image(light_matrix.IMAGE_HAPPY)
