@@ -1,0 +1,36 @@
+from hub import port, motion_sensor
+import runloop, motor_pair
+import motor
+
+WHEEL_DIAMETER = 5.6    # wheel diameter in CM
+
+async def main(distance, speed):
+    motor_pair.pair(motor_pair.PAIR_1, port.A, port.B)
+    average_deg = 0
+    direction = distance/abs(distance)
+    robo_speed = int(speed * direction * -1)
+
+    # calculate degrees to rotate
+    target_degrees = abs(distance) * 360 / (WHEEL_DIAMETER * 3.14)
+
+    # reset motors and yaw
+    motor.reset_relative_position(port.A, 0)
+    motor.reset_relative_position(port.B, 0)
+    motion_sensor.reset_yaw(0)
+
+    # wait until robot motion is stable
+    await runloop.until(motion_sensor.stable)
+
+    # drive until target distance has been achieved
+    while average_deg < target_degrees:
+        error = motion_sensor.tilt_angles()[0]
+        correction = int(error*-2)
+        print(str(average_deg) + " : " + str(target_degrees) + " : " + str(motor.relative_position(port.A)) + " : " + str(motor.relative_position(port.B)) + " : " + str(correction) + " : " + str(robo_speed))
+        
+        motor_pair.move_tank(motor_pair.PAIR_1, robo_speed - correction, robo_speed + correction)
+
+        average_deg = abs((motor.relative_position(port.A)-motor.relative_position(port.B))/2)
+
+    motor_pair.stop(motor_pair.PAIR_1)
+
+runloop.run(main(60, 300))
