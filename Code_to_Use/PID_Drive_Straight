@@ -1,50 +1,53 @@
-from spike import PrimeHub, MotorPair
-from spike.control import wait_for_seconds
-import math
+from hub import port, motion_sensor
+import runloop, motor_pair
+import motor
+import time
 
-hub = PrimeHub()
-motors = MotorPair('A', 'E')  # Update to match your robot's motor ports
+WHEEL_DIAMETER = 5.6    # wheel diameter in CM
+MOTOR_INVERT = -1        # change to -1 or 1 for value if motors run reverse from expected
+MAX_SPEED = 1100        # max speed of drive motors (small = 660; medium = 1110; large = 1050)
 
 def drive_straight_pid(distance_cm, speed=30, kp=1.2, ki=0.0, kd=0.2):
-    """
-    Drive straight for a given distance using PID to correct heading.
 
-    Parameters:
-        distance_cm (float): Distance to travel (negative for backward)
-        speed (int): Base motor speed (positive only, function handles direction)
-        kp, ki, kd (float): PID constants
-    """
-
-    # Set up PID variables
+    # initialize pid variables
     integral = 0
     last_error = 0
-    target_heading = hub.motion_sensor.get_yaw_angle()
+    motor_average_deg = 0
+    target_heading = 0
 
-    # Reset motor rotation and yaw
-    motors.set_degrees_counted(0)
-    initial_direction = 1 if distance_cm >= 0 else -1
-    speed = abs(speed) * initial_direction
-    hub.motion_sensor.reset_yaw_angle()
+    # zero sensors
+    motion_sensor.reset_yaw(0)
+    motor.reset_relative_position(port.A, 0)
+    motor.reset_relative_position(port.B, 0)
 
-    motors.start(0, 0)  # Start motors at 0 speed for smooth control
+    # set speed to negative for backwards and postive for forwards
+    speed = speed * distance_cm/abs(distance_cm) * MOTOR_INVERT
 
-    while abs(motors.get_degrees_counted('average')) < abs(distance_cm * 360 / 17.6):  # Assume 17.6 cm/rev for wheels
-        current_heading = hub.motion_sensor.get_yaw_angle()
-        error = current_heading - target_heading
+    # calculate distance to travel in degrees based on wheel diameter
+    degrees = distance_cm * 360 / (3.14 * WHEEL_DIAMETER)
 
-        # Wrap angle to [-180, 180]
-        error = (error + 180) % 360 - 180
+    while abs(motor_average_deg) < abs(degrees):
+        current_heading = motion_sensor.tilt_angles()[0]
+        error = target_heading - current_heading
 
-        integral += error
+        # wrap error to +/-180deg
+        error = (error + 180) % 360 -180
+
+        integral = integral + error
         derivative = error - last_error
         correction = kp * error + ki * integral + kd * derivative
         last_error = error
 
-        left_speed = speed - correction
-        right_speed = speed + correction
+        print(str(current_heading) + " : " + str(error) + " : " + str(speed - correction) + " : " + str(speed + correction))
 
-        motors.start_tank(left_speed, right_speed)
-        wait_for_seconds(0.01)
+        motor_pair.move_tank(motor_pair.PAIR_1, int(speed - correction), int(speed + correction))
+        motor_average_deg = (abs(motor.relative_position(port.A)) + abs(motor.relative_position(port.B))) / 2
+        
+        time.sleep_ms(100)
 
-    motors.stop()
+    motor_pair.stop(motor_pair.PAIR_1)
 
+# initialize motors
+motor_pair.pair(motor_pair.PAIR_1, port.A, port.B)
+
+drive_straight_pid(100, 300)
