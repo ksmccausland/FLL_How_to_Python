@@ -4,15 +4,15 @@ import motor
 import time
 
 WHEEL_DIAMETER = 5.6    # wheel diameter in CM
-MOTOR_INVERT = -1        # change to -1 or 1 for value if motors run reverse from expected
-MAX_SPEED = 1100        # max speed of drive motors (small = 660; medium = 1110; large = 1050)
+MOTOR_INVERT = -1       # change to -1 or 1 for value if motors run reverse from expected
+MAX_SPEED = 1050        # max speed of drive motors (small = 660; medium = 1110; large = 1050)
 
-def drive_straight_pid(distance_cm, speed=30, kp=1.2, ki=0.0, kd=0.2):
+def drive_straight_pid(distance_cm, speed=400, acceleration=500, kp=1.2, ki=0.0, kd=0.2):
 
     # initialize pid variables
     integral = 0
     last_error = 0
-    motor_average_deg = 0
+    current_deg = 0
     target_heading = 0
 
     # zero sensors
@@ -24,30 +24,31 @@ def drive_straight_pid(distance_cm, speed=30, kp=1.2, ki=0.0, kd=0.2):
     speed = speed * distance_cm/abs(distance_cm) * MOTOR_INVERT
 
     # calculate distance to travel in degrees based on wheel diameter
-    degrees = distance_cm * 360 / (3.14 * WHEEL_DIAMETER)
+    total_deg = distance_cm * 360 / (3.14 * WHEEL_DIAMETER)
 
-    while abs(motor_average_deg) < abs(degrees):
+    while abs(current_deg) < abs(total_deg):
         current_heading = motion_sensor.tilt_angles()[0]
         error = target_heading - current_heading
 
         # wrap error to +/-180deg
         error = (error + 180) % 360 -180
 
+        # PID to maintain heading
         integral = integral + error
         derivative = error - last_error
         correction = kp * error + ki * integral + kd * derivative
         last_error = error
 
-        print(str(current_heading) + " : " + str(error) + " : " + str(speed - correction) + " : " + str(speed + correction))
+        print(str(current_deg) + " : " + str(total_deg) + " : " + str(error) + " : " + str(speed - correction) + " : " + str(speed + correction))
 
-        motor_pair.move_tank(motor_pair.PAIR_1, int(speed - correction), int(speed + correction))
-        motor_average_deg = (abs(motor.relative_position(port.A)) + abs(motor.relative_position(port.B))) / 2
+        motor_pair.move_tank(motor_pair.PAIR_1, int(speed - correction), int(speed + correction), acceleration=acceleration)
+        current_deg = (abs(motor.relative_position(port.A)) + abs(motor.relative_position(port.B))) / 2
         
-        time.sleep_ms(100)
+        time.sleep_ms(10)
 
     motor_pair.stop(motor_pair.PAIR_1)
 
 # initialize motors
 motor_pair.pair(motor_pair.PAIR_1, port.A, port.B)
 
-drive_straight_pid(100, 300)
+drive_straight_pid(-100, 1000, 700)
