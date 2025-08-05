@@ -1,4 +1,3 @@
-```python
 import motor
 from hub import port, button
 import time
@@ -29,7 +28,6 @@ async def wait_for_button_press():
 # Main event loop
 async def main():
     await wait_for_button_press()
-```
     runloop.run(claw(), lift())
 
 # Start the program
