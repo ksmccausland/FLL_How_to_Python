@@ -1,0 +1,34 @@
+import motor
+from hub import port, button
+import time
+import runloop
+
+# Constants
+LIFT_DEGREES = 90
+CLAW_DEGREES = 360 * 8
+CLAW_SPEED = 1000
+LIFT_SPEED = 200
+
+# Async function to operate the claw: in then out
+async def claw():
+    await motor.run_for_degrees(port.C, -CLAW_DEGREES, CLAW_SPEED)
+    motor.run_for_degrees(port.C, CLAW_DEGREES, CLAW_SPEED)
+
+# Async function to lift: down then up, with a 1-second pause
+async def lift():
+    motor.run_for_degrees(port.D, -LIFT_DEGREES, LIFT_SPEED, stop=motor.HOLD)
+    time.sleep(1)
+    motor.run_for_degrees(port.D, LIFT_DEGREES, LIFT_SPEED, stop=motor.HOLD)
+
+# Wait until either LEFT or RIGHT button is pressed
+async def wait_for_button_press():
+    while not button.pressed(button.LEFT) and not button.pressed(button.RIGHT):
+        time.sleep_ms(10)
+
+# Main event loop
+async def main():
+    await wait_for_button_press()
+    runloop.run(claw(), lift())
+
+# Start the program
+runloop.run(main())
