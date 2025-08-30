@@ -1,0 +1,68 @@
+import runloop
+from hub import button, port
+import color_sensor
+import color
+
+COLOR_SENSOR = port.E
+
+# --- Define your functions for each color ---
+async def action_red():
+    print("Running RED function")
+    # example: drive forward
+    # await motor_pair.move_for_degrees(port.A, port.E, 720, 50)
+
+async def action_green():
+    print("Running GREEN function")
+    # example: turn left
+    # await pid_turn(-90)
+
+async def action_blue():
+    print("Running BLUE function")
+    # example: lift an arm
+    # await motor.run_for_degrees(port.C, 360, 50)
+
+async def action_yellow():
+    print("Running YELLOW function")
+    # example: play sound
+    # await sound.play("Boing")
+
+async def action_azure():
+    print("Running AZURE function")
+    # example: turn right
+    # await pid_turn(90)
+
+
+# --- Color lookup table ---
+color_actions = {
+    color.RED: action_red,
+    color.GREEN: action_green,
+    color.BLUE: action_blue,
+    color.YELLOW: action_yellow,
+    color.AZURE: action_azure,
+}
+
+
+# --- Main loop ---
+async def main():
+    print("Ready... Press left or right button to choose action.")
+
+    while True:
+        # Wait until left or right button pressed
+        if button.pressed(button.LEFT) or button.pressed(button.RIGHT):
+            # Read color
+            current_color = color_sensor.color(COLOR_SENSOR)
+
+            if current_color in color_actions:
+                # Run the matched function
+                await color_actions[current_color]()
+            else:
+                print("No valid color detected")
+
+            # Wait for release to avoid repeat trigger
+            while button.pressed(button.LEFT) or button.pressed(button.RIGHT):
+                await runloop.sleep_ms(50)
+
+        await runloop.sleep_ms(50)# small delay to save CPU
+
+
+runloop.run(main())
