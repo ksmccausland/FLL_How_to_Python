@@ -5,10 +5,17 @@ import time
 
 WHEEL_DIAMETER = 5.6    # wheel diameter in CM
 MOTOR_INVERT = -1       # change to -1 or 1 for value if motors run reverse from expected
-MAX_SPEED = 1110        # max speed of drive motors (small = 660; medium = 1110; large = 1050)
+MAX_SPEED = 1050        # max speed of drive motors (small = 660; medium = 1110; large = 1050)
+LEFT_DRIVE = port.A     # port of left drive motor
+RIGHT_DRIVE = port.B    # port of right drive motor
 
-async def drive_straight_pid(distance_cm, speed, acceleration=1000, kp=1.2, ki=0.0, kd=0.2):
+# create and store the drive motor pair
+motor_pair.pair(motor_pair.PAIR_1, LEFT_DRIVE, RIGHT_DRIVE)
+DRIVE_PAIR = motor_pair.PAIR_1
 
+# PID drive straight function.  You may need to adjust kp, ki, and kd for different attachments and acceleration
+# based on your wheel choice to prevent slipping.  Note distance is in centimeters.
+async def drive_straight_pid(distance_cm, speed=400, *, acceleration=2000, kp=1.2, ki=0.0, kd=0.2):
     # initialize pid variables
     integral = 0
     last_error = 0
@@ -17,8 +24,8 @@ async def drive_straight_pid(distance_cm, speed, acceleration=1000, kp=1.2, ki=0
 
     # zero sensors
     motion_sensor.reset_yaw(0)
-    motor.reset_relative_position(port.A, 0)
-    motor.reset_relative_position(port.B, 0)
+    motor.reset_relative_position(LEFT_DRIVE, 0)
+    motor.reset_relative_position(RIGHT_DRIVE, 0)
 
     # set speed to negative for backwards and postive for forwards
     speed = speed * distance_cm/abs(distance_cm) * MOTOR_INVERT
@@ -41,14 +48,14 @@ async def drive_straight_pid(distance_cm, speed, acceleration=1000, kp=1.2, ki=0
 
         print(str(current_deg) + " : " + str(total_deg) + " : " + str(error) + " : " + str(speed - correction) + " : " + str(speed + correction))
 
-        motor_pair.move_tank(motor_pair.PAIR_1, int(speed - correction), int(speed + correction), acceleration=acceleration)
-        current_deg = (abs(motor.relative_position(port.A)) + abs(motor.relative_position(port.B))) / 2
-        
+        motor_pair.move_tank(DRIVE_PAIR, int(speed - correction), int(speed + correction), acceleration=acceleration)
+        current_deg = (abs(motor.relative_position(LEFT_DRIVE)) + abs(motor.relative_position(RIGHT_DRIVE))) / 2
+
         time.sleep_ms(10)
 
-    motor_pair.stop(motor_pair.PAIR_1)
+    motor_pair.stop(DRIVE_PAIR)
 
-# initialize motors
-motor_pair.pair(motor_pair.PAIR_1, port.A, port.B)
+async def main():
+    runloop.run(drive_straight_pid(20, 500))
 
-drive_straight_pid(-100, 1000, 700)
+runloop.run(main())
