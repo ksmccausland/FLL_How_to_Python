@@ -1,40 +1,56 @@
-def turn_to_angle_pid(target_angle, speed=30, kp=1.5, ki=0.0, kd=0.5, tolerance=1.0):
-    """
-    Rotate robot to a specific angle using gyro-based PID control.
+import runloop, motor_pair
+from hub import motion_sensor, port
 
-    Parameters:
-        target_angle (float): Target angle in degrees (positive = right turn, negative = left turn)
-        speed (int): Maximum motor speed (absolute)
-        kp, ki, kd (float): PID constants
-        tolerance (float): Acceptable error margin in degrees
-    """
+LEFT_DRIVE = port.A
+RIGHT_DRIVE = port.B
 
-    # Reset yaw angle
-    hub.motion_sensor.reset_yaw_angle()
+motor_pair.pair(motor_pair.PAIR_1, LEFT_DRIVE, RIGHT_DRIVE)
+DRIVE_PAIR = motor_pair.PAIR_1
+
+async def pid_turn(target_angle, max_speed, *, acceleration=1000, kp=1.2, ki=0.0, kd=0.3):
+    """
+    Turn robot to a specific angle using PID control.
+    Positive target_angle = turn right (clockwise)
+    Negative target_angle = turn left (counterclockwise)
+    """
+    # convert target angle to decidegrees
+    target_angle = target_angle*10
+
+    # Reset yaw to 0 before starting
+    motion_sensor.reset_yaw(0)
 
     integral = 0
-    last_error = target_angle
+    last_error = 0
 
     while True:
-        current_angle = hub.motion_sensor.get_yaw_angle()
+        # Current yaw angle
+        current_angle = motion_sensor.tilt_angles()[0]# yaw in degrees
         error = target_angle - current_angle
 
-        # Wrap error to [-180, 180] to avoid long turns
-        error = (error + 180) % 360 - 180
-
-        if abs(error) <= tolerance:
+        # Exit condition (within 2 decidegrees (0.2 degrees) of target)
+        if abs(error) < 2:
             break
 
-        integral += error
+        # PID correction
+        integral = integral + error
         derivative = error - last_error
         correction = kp * error + ki * integral + kd * derivative
         last_error = error
 
-        # Clamp correction to motor speed limits
-        correction = max(-abs(speed), min(abs(speed), correction))
+        # Clamp correction to max_speed
+        correction = max(-max_speed, min(max_speed, correction))
 
-        # In-place tank turn: left motor opposite of right
-        motors.start_tank(correction, -correction)
-        wait_for_seconds(0.01)
+        # Tank turn: left vs right opposite power
+        motor_pair.move_tank(DRIVE_PAIR, -int(correction), int(correction), acceleration=acceleration)
 
-    motors.stop()
+        print(str(int(current_angle)) + " | " + str(int(target_angle)) + " | " + str(int(correction)))
+
+        await runloop.sleep_ms(10)
+
+    # Stop motors at the end
+    motor_pair.stop(DRIVE_PAIR)
+
+async def main():
+    runloop.run(pid_turn(-45, 400))
+
+runloop.run(main())
