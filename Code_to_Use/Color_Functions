@@ -1,5 +1,5 @@
 import runloop
-from hub import button, port
+from hub import button, port, light_matrix
 import color_sensor
 import color
 
@@ -8,57 +8,62 @@ COLOR_SENSOR = port.E
 # --- Define your functions for each color ---
 async def action_red():
     print("Running RED function")
-    # example: drive forward
     # await motor_pair.move_for_degrees(port.A, port.E, 720, 50)
 
 async def action_green():
     print("Running GREEN function")
-    # example: turn left
     # await pid_turn(-90)
 
 async def action_blue():
     print("Running BLUE function")
-    # example: lift an arm
     # await motor.run_for_degrees(port.C, 360, 50)
 
 async def action_yellow():
     print("Running YELLOW function")
-    # example: play sound
     # await sound.play("Boing")
 
 async def action_azure():
     print("Running AZURE function")
-    # example: turn right
     # await pid_turn(90)
 
 
-# --- Color lookup table ---
+# --- Color lookup table (color → (number, function)) ---
 color_actions = {
-    color.RED: action_red,
-    color.GREEN: action_green,
-    color.BLUE: action_blue,
-    color.YELLOW: action_yellow,
-    color.AZURE: action_azure,
+    color.RED:    (1, action_red),
+    color.GREEN:(2, action_green),
+    color.BLUE:    (3, action_blue),
+    color.YELLOW:(4, action_yellow),
+    color.AZURE:(5, action_azure),
 }
-
 
 # --- Main loop ---
 async def main():
     print("Ready... Press left or right button to choose action.")
 
-    while True:
-        # Wait until left or right button pressed
-        if button.pressed(button.LEFT) or button.pressed(button.RIGHT):
-            # Read color
-            current_color = color_sensor.color(COLOR_SENSOR)
+    last_color = None
 
+    while True:
+        # Read current color
+        current_color = color_sensor.color(COLOR_SENSOR)
+
+        # If color changed, update the light matrix
+        if current_color != last_color:
             if current_color in color_actions:
-                # Run the matched function
-                await color_actions[current_color]()
+                num, _ = color_actions[current_color]
+                light_matrix.write(str(num))
+            else:
+                light_matrix.write("?")
+            last_color = current_color
+
+        # Check for button press to run the action for the current color
+        if button.pressed(button.LEFT) or button.pressed(button.RIGHT):
+            if current_color in color_actions:
+                _, func = color_actions[current_color]
+                await func()
             else:
                 print("No valid color detected")
 
-            # Wait for release to avoid repeat trigger
+            # Wait until buttons are released to avoid repeated triggers
             while button.pressed(button.LEFT) or button.pressed(button.RIGHT):
                 await runloop.sleep_ms(50)
 
