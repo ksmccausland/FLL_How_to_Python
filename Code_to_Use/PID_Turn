@@ -7,12 +7,9 @@ RIGHT_DRIVE = port.B
 motor_pair.pair(motor_pair.PAIR_1, LEFT_DRIVE, RIGHT_DRIVE)
 DRIVE_PAIR = motor_pair.PAIR_1
 
-async def pid_turn(target_angle, max_speed, *, acceleration=1000, kp=1.2, ki=0.0, kd=0.3):
-    """
-    Turn robot to a specific angle using PID control.
-    Positive target_angle = turn right (clockwise)
-    Negative target_angle = turn left (counterclockwise)
-    """
+# Turn robot by amount target_angle in degrees via a PID (proportional, integral, derivative).  You WILL need to adjust kp, ki, and kd for different robots
+# based on your wheel choice, robot's weight, attachments, etc.  max_speed and acceleration will limit robot drive parameters.
+async def pid_turn(target_angle, *, max_speed=1000, acceleration=500, kp=.7, ki=0, kd=10):
     # convert target angle to decidegrees
     target_angle = target_angle*10
 
@@ -25,10 +22,17 @@ async def pid_turn(target_angle, max_speed, *, acceleration=1000, kp=1.2, ki=0.0
     while True:
         # Current yaw angle
         current_angle = motion_sensor.tilt_angles()[0]# yaw in degrees
+
         error = target_angle - current_angle
+        # Wrap into [-180, 180]
+        if error > 1800:
+            error -= 3600
+        elif error < -1800:
+            error += 3600
+        return error
 
         # Exit condition (within 2 decidegrees (0.2 degrees) of target)
-        if abs(error) < 2:
+        if abs(error) < 5:
             break
 
         # PID correction
@@ -49,8 +53,3 @@ async def pid_turn(target_angle, max_speed, *, acceleration=1000, kp=1.2, ki=0.0
 
     # Stop motors at the end
     motor_pair.stop(DRIVE_PAIR)
-
-async def main():
-    runloop.run(pid_turn(-45, 400))
-
-runloop.run(main())
