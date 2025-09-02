@@ -27,13 +27,13 @@ async def action_azure():
     # await pid_turn(90)
 
 
-# --- Color lookup table (color → (number, function)) ---
+# --- Color lookup table (color -> (number, function)) ---
 color_actions = {
-    color.RED:    (1, action_red),
-    color.GREEN:(2, action_green),
-    color.BLUE:    (3, action_blue),
-    color.YELLOW:(4, action_yellow),
-    color.AZURE:(5, action_azure),
+    color.RED:       (1, action_red),
+    color.GREEN:     (2, action_green),
+    color.BLUE:      (3, action_blue),
+    color.YELLOW:    (4, action_yellow),
+    color.AZURE:     (5, action_azure),
 }
 
 # --- Main loop ---
