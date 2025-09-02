@@ -1,6 +1,7 @@
 import runloop, motor_pair
 from hub import motion_sensor, port
 
+# define drive motors and PAIR_1
 LEFT_DRIVE = port.A
 RIGHT_DRIVE = port.B
 
@@ -9,7 +10,7 @@ DRIVE_PAIR = motor_pair.PAIR_1
 
 # Turn robot by amount target_angle in degrees via a PID (proportional, integral, derivative).  You WILL need to adjust kp, ki, and kd for different robots
 # based on your wheel choice, robot's weight, attachments, etc.  max_speed and acceleration will limit robot drive parameters.
-async def pid_turn(target_angle, *, max_speed=1000, acceleration=500, kp=.7, ki=0, kd=10):
+async def pid_turn(target_angle, *, max_speed=1000, acceleration=500, kp=.7, ki=0, kd=10, accuracy=5):
     # convert target angle to decidegrees
     target_angle = target_angle*10
 
@@ -22,20 +23,20 @@ async def pid_turn(target_angle, *, max_speed=1000, acceleration=500, kp=.7, ki=
     while True:
         # Current yaw angle
         current_angle = motion_sensor.tilt_angles()[0]# yaw in degrees
-
         error = target_angle - current_angle
-        # Wrap into [-180, 180]
+
+        # Wrap error into [-1800, 1800]
         if error > 1800:
             error -= 3600
         elif error < -1800:
             error += 3600
         return error
 
-        # Exit condition (within 2 decidegrees (0.2 degrees) of target)
-        if abs(error) < 5:
+        # Exit loop when robot angle is within accuracy
+        if abs(error) < accuracy:
             break
 
-        # PID correction
+        # PID correction calculation
         integral = integral + error
         derivative = error - last_error
         correction = kp * error + ki * integral + kd * derivative
@@ -44,12 +45,12 @@ async def pid_turn(target_angle, *, max_speed=1000, acceleration=500, kp=.7, ki=
         # Clamp correction to max_speed
         correction = max(-max_speed, min(max_speed, correction))
 
-        # Tank turn: left vs right opposite power
+        # Perform tank turn based on correction
         motor_pair.move_tank(DRIVE_PAIR, -int(correction), int(correction), acceleration=acceleration)
 
         print(str(int(current_angle)) + " | " + str(int(target_angle)) + " | " + str(int(correction)))
 
         await runloop.sleep_ms(10)
 
-    # Stop motors at the end
+    # Stop motors when loop is done
     motor_pair.stop(DRIVE_PAIR)
